@@ -2,6 +2,8 @@
 # or using -var="hcloud_token=..." CLI option
 variable "hcloud_token" {}
 
+variable "email" {}
+
 variable "ssh_keys" {
   type = list(string)
 }
@@ -11,6 +13,7 @@ variable "private_ssh_key_path" {}
 
 # Configure the Hetzner Cloud Provider
 provider "hcloud" {
+  version = "~> 1.14"
   token = "${var.hcloud_token}"
 }
 
@@ -34,7 +37,7 @@ resource "hcloud_server" "k8s-master" {
 
   provisioner "remote-exec" {
     inline = [
-      "bash install-master.sh ${hcloud_server.k8s-master.ipv4_address}"
+      "bash install-master.sh ${hcloud_server.k8s-master.ipv4_address} ${var.hcloud_token} ${var.email}"
     ]
   }
 
