@@ -5,7 +5,7 @@ installs Kubernetes using kubeadm on it.
 
 ## Features
 
-* Creation of local kubectl config '~/.kube/config-<master ip>`
+* Creation of local kubectl config `~/.kube/config-<master ip>`
 * Dashboard
 * [Container Storage Interface driver for Hetzner Cloud Volumes](https://github.com/hetznercloud/csi-driver)
 * Helm / Tiller
