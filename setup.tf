@@ -2,6 +2,11 @@
 # or using -var="hcloud_token=..." CLI option
 variable "hcloud_token" {}
 
+variable "master-node-name" {
+  type    = "string"
+  default = "k8s-master"
+}
+
 variable "email" {}
 
 variable "ssh_keys" {
@@ -19,7 +24,7 @@ provider "hcloud" {
 
 # Create a server
 resource "hcloud_server" "k8s-master" {
-  name = "k8s-master"
+  name = "${var.master-node-name}"
   image = "ubuntu-18.04"
   server_type = "cx21"
   ssh_keys = "${var.ssh_keys}"
