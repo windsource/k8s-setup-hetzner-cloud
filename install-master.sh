@@ -170,27 +170,26 @@ EOF
 
 
 function installHelm {
-  curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > install-helm.sh
+  curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get-helm-3 > install-helm.sh
   chmod u+x install-helm.sh
   ./install-helm.sh
 
-  kubectl -n kube-system create serviceaccount tiller
-  kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
-  helm init --service-account tiller
-  kubectl wait --for=condition=available deployment/tiller-deploy -n kube-system --timeout=300s
-  kubectl wait --for=condition=Ready pod --all -n kube-system --timeout=300s
+  helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+  helm repo update
 }
 
 
 function installNginxIngressControllerAndCertManager {
   # Install nginx ingress controller
-  helm install --name ingress --namespace ingress --set rbac.create=true,controller.kind=DaemonSet,controller.service.type=ClusterIP,controller.hostNetwork=true stable/nginx-ingress
+  kubectl create ns ingress
+  helm install ingress stable/nginx-ingress --namespace ingress --set rbac.create=true,controller.kind=DaemonSet,controller.service.type=ClusterIP,controller.hostNetwork=true 
 
   # Create a namespace to run cert-manager in
   kubectl create namespace cert-manager
 
   # Install the CustomResourceDefinitions and cert-manager itself
   kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.11.0/cert-manager.yaml
+  sleep 3
   kubectl wait --for=condition=Ready pod --all -n cert-manager --timeout=300s
   kubectl wait --for=condition=Ready pod --all -n kube-system --timeout=300s
   
