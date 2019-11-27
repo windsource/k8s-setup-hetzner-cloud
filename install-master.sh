@@ -189,7 +189,13 @@ function installNginxIngressControllerAndCertManager {
 
   # Install the CustomResourceDefinitions and cert-manager itself
   kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.11.0/cert-manager.yaml
-  sleep 3
+  
+  # Wait unitl the pods of cert-manager become visible
+  while (( $(kubectl -n cert-manager get pod | wc -l) < 4 ))
+  do
+      sleep 1;
+  done
+
   kubectl wait --for=condition=Ready pod --all -n cert-manager --timeout=300s
   kubectl wait --for=condition=Ready pod --all -n kube-system --timeout=300s
   
@@ -237,6 +243,28 @@ EOF
 }
 
 
+# Note: when using prometheus-operator, metrics-server is not required anymore
+function installMetricsServer {
+  kubectl create ns metrics
+  helm install metrics-server stable/metrics-server --namespace metrics --set args={"--kubelet-insecure-tls=true, --kubelet-preferred-address-types=InternalIP\,Hostname\,ExternalIP"}
+}
+
+
+function installPrometheusOperator {
+  # We use kube-prometheus https://github.com/coreos/kube-prometheus to install prometheus-operator together with Grafana, etc.
+  # The helm chart stable/prometheus-operator cannot be used due to an incompatibility with helm3,
+  # see https://github.com/crossplaneio/crossplane/pull/1077
+  
+  git clone https://github.com/coreos/kube-prometheus.git --depth 1
+  cd kube-prometheus
+  kubectl create -f manifests/setup
+  until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
+  kubectl create -f manifests/
+  cd ..
+}
+
+
+
 # exit when any command fails
 set -e
 
@@ -265,3 +293,9 @@ installDashboard
 installHelm
 
 installNginxIngressControllerAndCertManager
+
+# Note: when using prometheus-operator, metrics-server is not required anymore
+#installMetricsServer
+
+# Note: when using prometheus-operator an instance with just 2 vCPUs is already overcommitted!
+#installPrometheusOperator

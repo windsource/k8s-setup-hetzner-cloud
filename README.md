@@ -52,3 +52,33 @@ kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboar
 Start a proxy with `kubectl proxy`.
 
 Then goto http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/.
+
+## Access Prometheus
+
+Forward the port using
+
+```bash
+kubectl --namespace monitoring port-forward svc/prometheus-k8s 9090
+```
+
+Then goto http://localhost:9090/
+
+## Access Grafana
+
+Forward the port using
+
+```bash
+kubectl --namespace monitoring port-forward svc/grafana 3000
+```
+
+Then goto http://localhost:3000/ and use user/password admin/admin.
+
+## Access Alert Manager
+
+Forward the port using
+
+```bash
+kubectl --namespace monitoring port-forward svc/alertmanager-main 9093
+```
+
+Then goto http://localhost:9093/
