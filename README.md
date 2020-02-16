@@ -11,6 +11,11 @@ installs Kubernetes using kubeadm on it.
 * Helm / Tiller
 * Nginx ingress controller
 * cert-manager
+* Firewall using `ufw`
+
+## Requirements
+
+* Terraform >= v0.12.0 must be installed
 
 ## Setup
 
@@ -21,6 +26,7 @@ hcloud_token = "<your Hetzner API token>"
 ssh_keys = ["<your Hetzner cloud ssh key to use for the server>"]
 private_ssh_key_path = "<path to local ssh key>"
 email = "<email to use for Let's Encrypt registration>"
+master-node-name = "<node name>"
 ```
 
 Then call 

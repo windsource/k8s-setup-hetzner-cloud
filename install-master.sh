@@ -94,7 +94,7 @@ EOF
   # see https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
   sudo sysctl net.bridge.bridge-nf-call-iptables=1
   # sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans="$1"
-  sudo kubeadm init --kubernetes-version=v1.16.1 --pod-network-cidr=10.244.0.0/16 --apiserver-cert-extra-sans="$PUBLIC_IP"
+  sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-cert-extra-sans="$PUBLIC_IP"
 
   # Then prepare the use of kubectl
   mkdir -p $HOME/.kube
@@ -263,7 +263,14 @@ function installPrometheusOperator {
   cd ..
 }
 
-
+function setupFirewall {
+  ufw default deny incoming
+  ufw limit ssh
+  ufw allow 6443/tcp
+  ufw allow http
+  ufw allow https
+  ufw --force enable
+}
 
 # exit when any command fails
 set -e
@@ -293,6 +300,8 @@ installDashboard
 installHelm
 
 installNginxIngressControllerAndCertManager
+
+setupFirewall
 
 # Note: when using prometheus-operator, metrics-server is not required anymore
 #installMetricsServer
