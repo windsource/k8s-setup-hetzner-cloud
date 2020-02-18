@@ -69,14 +69,17 @@ metadata:
   namespace: kube-system
 stringData:
   token: "$HCLOUD_TOKEN"
+  network: "$HCLOUD_NETWORD"
 EOF
 
-  kubectl apply -f https://raw.githubusercontent.com/hetznercloud/hcloud-cloud-controller-manager/master/deploy/v1.5.0.yaml
+  curl -LO https://raw.githubusercontent.com/hetznercloud/hcloud-cloud-controller-manager/ba7fb1252cffb5c8c24537bf08b81105a31219a2/deploy/v1.5.1-networks.yaml
+  sed -i 's/10.244.0.0\/16/10.217.0.0\/16/' v1.5.1-networks.yaml
+  kubectl apply -f v1.5.1-networks.yaml
 }
 
 
 function installAndRunKubeadm {
-  #prepareHetznerCloudControllerManager
+  prepareHetznerCloudControllerManager
 
   # Installing kubeadm, kubelet and kubectl
   sudo apt-get update
@@ -87,29 +90,28 @@ deb https://apt.kubernetes.io/ kubernetes-xenial main
 EOF
   sudo mv kubernetes.list /etc/apt/sources.list.d/
   sudo apt-get update
-  sudo apt-get install -y kubelet kubeadm kubectl
+  export K8S_VERSION=1.16.7-00
+  sudo apt-get install -y kubelet=$K8S_VERSION kubeadm=$K8S_VERSION kubectl=$K8S_VERSION
   sudo apt-mark hold kubelet kubeadm kubectl
 
   # Creating a single control-plane cluster with kubeadm
   # see https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
   sudo sysctl net.bridge.bridge-nf-call-iptables=1
   # sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans="$1"
-  sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-cert-extra-sans="$PUBLIC_IP"
+  sudo kubeadm init --pod-network-cidr=10.217.0.0/16 --apiserver-cert-extra-sans="$PRIVATE_IP"
 
   # Then prepare the use of kubectl
   mkdir -p $HOME/.kube
   sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
   sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
+  setupHetznerCloudControllerManager
+
   # Now we need to install a pod network and choose flannel:
-  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
+  # kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
 
-  # # As Kubernetes with the external cloud provider flag activated will add a taint to uninitialized nodes, 
-  # # the cluster critical pods need to be patched to tolerate these
-  # kubectl -n kube-system patch daemonset kube-flannel-ds-amd64 --type json -p '[{"op":"add","path":"/spec/template/spec/tolerations/-","value":{"key":"node.cloudprovider.kubernetes.io/uninitialized","value":"true","effect":"NoSchedule"}}]'
-  # kubectl -n kube-system patch deployment coredns --type json -p '[{"op":"add","path":"/spec/template/spec/tolerations/-","value":{"key":"node.cloudprovider.kubernetes.io/uninitialized","value":"true","effect":"NoSchedule"}}]'
-
-  # setupHetznerCloudControllerManager
+  # Now we need to install a pod network and choose cilium:
+  kubectl create -f https://raw.githubusercontent.com/cilium/cilium/v1.6/install/kubernetes/quick-install.yaml
 
   # For a single node setup we need to make sure that pods are allowed to be scheduled on the master node.
   kubectl taint nodes --all node-role.kubernetes.io/master-
@@ -275,14 +277,16 @@ function setupFirewall {
 # exit when any command fails
 set -e
 
-if [[ $# -ne 3 ]]; then
-    echo "usage: bash install-master <public ip> <hcloud token> <email>"
+if [[ $# -ne 5 ]]; then
+    echo "usage: bash install-master <public ip> <hcloud token> <email> <private ip> <network id>"
     exit 1
 fi
 
 PUBLIC_IP=$1
 HCLOUD_TOKEN=$2
 EMAIL=$3
+PRIVATE_IP=$4
+HCLOUD_NETWORK=$5
 
 # Print every command
 set -x
